@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using SFramework.Core.Runtime;
+using SFramework.Repositories.Runtime;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
@@ -18,21 +20,24 @@ namespace SFramework.Scenes.Runtime
 
         private readonly Dictionary<string, SceneInstance> _loadedScenes = new();
         private readonly List<string> _loadingScenes = new();
-        private readonly Dictionary<string, AssetReference> _availableScenes = new();
+        private readonly Dictionary<string, string> _availableScenes = new();
         private readonly Dictionary<Scene, SceneInstance> _sceneToSceneInstance = new();
         private readonly Dictionary<SceneInstance, Scene> _sceneInstanceToScene = new();
         private readonly Dictionary<SceneInstance, string> _sceneInstanceToSFScene = new();
 
+        
 
         [SFInject]
-        public void Init(SFScenesDatabase database)
+        public void Init(ISFRepositoryProvider provider)
         {
-            foreach (var groupContainer in database.Nodes)
+            var _repository = provider.GetRepositories<SFScenesRepository>().FirstOrDefault();
+            
+            foreach (var groupContainer in _repository.Nodes)
             {
-                foreach (SFSceneContainer sceneContainer in groupContainer.Children)
+                foreach (SFSceneNode sceneContainer in groupContainer.Nodes)
                 {
-                    var scene = $"{groupContainer.Name}/{sceneContainer.Name}";
-                    _availableScenes[scene] = sceneContainer.Scene;
+                    var scene = $"{groupContainer._Name}/{sceneContainer._Name}";
+                    _availableScenes[scene] = sceneContainer.Path;
                 }
             }
         }
@@ -93,7 +98,7 @@ namespace SFramework.Scenes.Runtime
             _loadingScenes.Add(sfScene);
             OnSceneLoad.Invoke(sfScene);
             var assetReference = _availableScenes[sfScene];
-            var asyncOperationHandle = Addressables.LoadSceneAsync(assetReference.RuntimeKey, LoadSceneMode.Additive);
+            var asyncOperationHandle = Addressables.LoadSceneAsync(assetReference, LoadSceneMode.Additive);
             await asyncOperationHandle.Task;
             var sceneInstance = asyncOperationHandle.Result;
             var scene = sceneInstance.Scene;
@@ -157,7 +162,7 @@ namespace SFramework.Scenes.Runtime
             if (!_availableScenes.ContainsKey(sfScene)) return new SceneInstance();
             OnSceneLoad.Invoke(sfScene);
             var assetReference = _availableScenes[sfScene];
-            asyncOperationHandle = Addressables.LoadSceneAsync(assetReference.RuntimeKey, LoadSceneMode.Additive);
+            asyncOperationHandle = Addressables.LoadSceneAsync(assetReference, LoadSceneMode.Additive);
             await asyncOperationHandle.Task;
             sceneInstance = asyncOperationHandle.Result;
             scene = sceneInstance.Scene;
@@ -175,6 +180,10 @@ namespace SFramework.Scenes.Runtime
             onLoaded?.Invoke(sceneInstance);
             OnSceneLoaded.Invoke(sfScene);
             return sceneInstance;
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

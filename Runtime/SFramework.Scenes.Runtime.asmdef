@@ -4,7 +4,8 @@
     "references": [
         "SFramework.Core.Runtime",
         "Unity.Addressables",
-        "Unity.ResourceManager"
+        "Unity.ResourceManager",
+        "SFramework.Repositories.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

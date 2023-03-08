@@ -36,7 +36,7 @@ namespace SFramework.Scenes.Runtime
             {
                 foreach (SFSceneNode sceneContainer in groupContainer.Nodes)
                 {
-                    var scene = $"{_repository._Name}/{groupContainer._Name}/{sceneContainer._Name}";
+                    var scene = $"{_repository.Name}/{groupContainer.Name}/{sceneContainer.Name}";
                     _availableScenes[scene] = sceneContainer.Path;
                 }
             }

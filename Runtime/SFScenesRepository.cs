@@ -19,10 +19,10 @@ namespace SFramework.Scenes.Runtime
 
             foreach (var layer0 in Groups)
             {
-                groups.Add($"{_Name}/{layer0._Name}");
+                groups.Add($"{Name}/{layer0.Name}");
                 foreach (var layer1 in layer0.Scenes)
                 {
-                    scenes.Add($"{_Name}/{layer0._Name}/{layer1._Name}");
+                    scenes.Add($"{Name}/{layer0.Name}/{layer1.Name}");
                 }
             }
 

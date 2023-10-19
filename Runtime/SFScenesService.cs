@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
+using SFramework.Configs.Runtime;
 using SFramework.Core.Runtime;
-using SFramework.Repositories.Runtime;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
@@ -25,12 +27,9 @@ namespace SFramework.Scenes.Runtime
         private readonly Dictionary<SceneInstance, Scene> _sceneInstanceToScene = new();
         private readonly Dictionary<SceneInstance, string> _sceneInstanceToSFScene = new();
 
-        
-
-        [SFInject]
-        public void Init(ISFRepositoryProvider provider)
+        SFScenesService(ISFConfigsService provider)
         {
-            var _repository = provider.GetRepositories<SFScenesRepository>().FirstOrDefault();
+            var _repository = provider.GetRepositories<SFScenesConfig>().FirstOrDefault();
             
             foreach (var groupContainer in _repository.Nodes)
             {
@@ -185,5 +184,7 @@ namespace SFramework.Scenes.Runtime
         public void Dispose()
         {
         }
+
+
     }
 }

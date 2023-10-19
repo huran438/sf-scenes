@@ -5,7 +5,8 @@
         "SFramework.Core.Runtime",
         "Unity.Addressables",
         "Unity.ResourceManager",
-        "SFramework.Repositories.Runtime"
+        "SFramework.Configs.Runtime",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

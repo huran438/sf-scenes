@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using SFramework.Configs.Runtime;
 using SFramework.Core.Runtime;
-using SFramework.Repositories.Runtime;
 using UnityEngine;
 
 namespace SFramework.Scenes.Runtime
 {
-    public sealed class SFScenesRepository : SFRepository, ISFRepositoryGenerator
+    public sealed class SFScenesConfig : SFConfig, ISFConfigsGenerator
     {
         public SFScenesGroupContainer[] Groups;
 
-        public override ISFNode[] Nodes => Groups;
+        public override ISFConfigNode[] Nodes => Groups;
 
         public void GetGenerationData(out SFGenerationData[] generationData)
         {

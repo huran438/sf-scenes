@@ -1,14 +1,14 @@
 ﻿using System;
+using SFramework.Configs.Runtime;
 using SFramework.Core.Runtime;
-using SFramework.Repositories.Runtime;
 using UnityEngine;
 
 namespace SFramework.Scenes.Runtime
 {
     [Serializable]
-    public class SFScenesGroupContainer : SFNode
+    public class SFScenesGroupContainer : SFConfigNode
     {
         public SFSceneNode[] Scenes;
-        public override ISFNode[] Nodes => Scenes;
+        public override ISFConfigNode[] Nodes => Scenes;
     }
 }

@@ -1,13 +1,13 @@
 ﻿using System;
-using SFramework.Repositories.Runtime;
+using SFramework.Configs.Runtime;
 
 // ReSharper disable once CheckNamespace
 namespace SFramework.Scenes.Runtime
 {
     [Serializable]
-    public class SFSceneNode : SFNode
+    public class SFSceneNode : SFConfigNode
     {
         public string Path;
-        public override ISFNode[] Nodes => null;
+        public override ISFConfigNode[] Nodes => null;
     }
 }

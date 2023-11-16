@@ -1,7 +1,7 @@
 ﻿using System;
 using SFramework.Core.Runtime;
 using UnityEngine.ResourceManagement.ResourceProviders;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 // ReSharper disable once CheckNamespace
 namespace SFramework.Scenes.Runtime
@@ -18,8 +18,8 @@ namespace SFramework.Scenes.Runtime
         bool GetActiveScene(out string sfScene);
         SceneInstance GetScene(string sfScene);
         bool GetActiveScene(out SceneInstance sceneInstance);
-        Task<SceneInstance> LoadScene(string sfScene, bool setActive, Action<SceneInstance> loadCallback = null);
-        Task UnloadScene(string sfScene, Action unloadCallback = null);
-        Task<SceneInstance> ReloadScene(string sfScene, Action unloadCallback = null, Action<SceneInstance> loadCallback = null);
+        UniTask<SceneInstance> LoadScene(string sfScene, bool setActive);
+        UniTask UnloadScene(string sfScene);
+        UniTask<SceneInstance> ReloadScene(string sfScene);
     }
 }

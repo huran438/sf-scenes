@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using SFramework.Configs.Runtime;
-using SFramework.Core.Runtime;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
@@ -30,7 +27,7 @@ namespace SFramework.Scenes.Runtime
         SFScenesService(ISFConfigsService provider)
         {
             var _repository = provider.GetRepositories<SFScenesConfig>().FirstOrDefault();
-            
+
             foreach (var groupContainer in _repository.Nodes)
             {
                 foreach (SFSceneNode sceneContainer in groupContainer.Nodes)
@@ -65,9 +62,9 @@ namespace SFramework.Scenes.Runtime
         {
             var activeScene = SceneManager.GetActiveScene();
 
-            if (_sceneToSceneInstance.ContainsKey(activeScene))
+            if (_sceneToSceneInstance.TryGetValue(activeScene, out var value))
             {
-                sceneInstance = _sceneToSceneInstance[activeScene];
+                sceneInstance = value;
                 return true;
             }
 
@@ -79,9 +76,8 @@ namespace SFramework.Scenes.Runtime
         {
             var activeScene = SceneManager.GetActiveScene();
 
-            if (_sceneToSceneInstance.ContainsKey(activeScene))
+            if (_sceneToSceneInstance.TryGetValue(activeScene, out var sceneInstance))
             {
-                var sceneInstance = _sceneToSceneInstance[activeScene];
                 sfScene = _sceneInstanceToSFScene[sceneInstance];
                 return true;
             }
@@ -90,16 +86,13 @@ namespace SFramework.Scenes.Runtime
             return false;
         }
 
-        public async Task<SceneInstance> LoadScene(string sfScene, bool setActive,
-            Action<SceneInstance> onDone = null)
+        public async UniTask<SceneInstance> LoadScene(string sfScene, bool setActive)
         {
             if (!_availableScenes.ContainsKey(sfScene)) return new SceneInstance();
             _loadingScenes.Add(sfScene);
             OnSceneLoad.Invoke(sfScene);
             var assetReference = _availableScenes[sfScene];
-            var asyncOperationHandle = Addressables.LoadSceneAsync(assetReference, LoadSceneMode.Additive);
-            await asyncOperationHandle.Task;
-            var sceneInstance = asyncOperationHandle.Result;
+            var sceneInstance = await Addressables.LoadSceneAsync(assetReference, LoadSceneMode.Additive);
             var scene = sceneInstance.Scene;
             _loadingScenes.Remove(sfScene);
             _loadedScenes[sfScene] = sceneInstance;
@@ -107,32 +100,30 @@ namespace SFramework.Scenes.Runtime
             _sceneInstanceToSFScene[sceneInstance] = sfScene;
             _sceneToSceneInstance[scene] = sceneInstance;
             if (setActive)
+            {
                 SceneManager.SetActiveScene(scene);
-            onDone?.Invoke(sceneInstance);
+            }
             OnSceneLoaded.Invoke(sfScene);
             return sceneInstance;
         }
 
-        public async Task UnloadScene(string sfScene, Action onDone = null)
+        public async UniTask UnloadScene(string sfScene)
         {
             if (!_loadedScenes.ContainsKey(sfScene)) return;
             _loadingScenes.Add(sfScene);
             OnSceneUnload.Invoke(sfScene);
             var sceneInstance = _loadedScenes[sfScene];
             var scene = _sceneInstanceToScene[sceneInstance];
-            var asyncOperationHandle = Addressables.UnloadSceneAsync(sceneInstance);
-            await asyncOperationHandle.Task;
+            await Addressables.UnloadSceneAsync(sceneInstance).ToUniTask();
             _loadingScenes.Remove(sfScene);
             _loadedScenes.Remove(sfScene);
             _sceneInstanceToScene.Remove(sceneInstance);
             _sceneInstanceToSFScene.Remove(sceneInstance);
             _sceneToSceneInstance.Remove(scene);
-            onDone?.Invoke();
             OnSceneUnloaded.Invoke(sfScene);
         }
 
-        public async Task<SceneInstance> ReloadScene(string sfScene, Action onUnloaded = null,
-            Action<SceneInstance> onLoaded = null)
+        public async UniTask<SceneInstance> ReloadScene(string sfScene)
         {
             var isActiveScene = false;
 
@@ -149,21 +140,17 @@ namespace SFramework.Scenes.Runtime
             OnSceneUnload.Invoke(sfScene);
             var sceneInstance = _loadedScenes[sfScene];
             var scene = _sceneInstanceToScene[sceneInstance];
-            var asyncOperationHandle = Addressables.UnloadSceneAsync(sceneInstance);
-            await asyncOperationHandle.Task;
+            await Addressables.UnloadSceneAsync(sceneInstance).ToUniTask();
             _loadedScenes.Remove(sfScene);
             _sceneInstanceToSFScene.Remove(sceneInstance);
             _sceneInstanceToScene.Remove(sceneInstance);
             _sceneToSceneInstance.Remove(scene);
-            onUnloaded?.Invoke();
             OnSceneUnloaded.Invoke(sfScene);
 
             if (!_availableScenes.ContainsKey(sfScene)) return new SceneInstance();
             OnSceneLoad.Invoke(sfScene);
             var assetReference = _availableScenes[sfScene];
-            asyncOperationHandle = Addressables.LoadSceneAsync(assetReference, LoadSceneMode.Additive);
-            await asyncOperationHandle.Task;
-            sceneInstance = asyncOperationHandle.Result;
+            sceneInstance = await Addressables.LoadSceneAsync(assetReference, LoadSceneMode.Additive).ToUniTask();
             scene = sceneInstance.Scene;
             _loadingScenes.Remove(sfScene);
             _loadedScenes[sfScene] = sceneInstance;
@@ -175,8 +162,7 @@ namespace SFramework.Scenes.Runtime
             {
                 SceneManager.SetActiveScene(scene);
             }
-
-            onLoaded?.Invoke(sceneInstance);
+            
             OnSceneLoaded.Invoke(sfScene);
             return sceneInstance;
         }
@@ -184,7 +170,5 @@ namespace SFramework.Scenes.Runtime
         public void Dispose()
         {
         }
-
-
     }
 }

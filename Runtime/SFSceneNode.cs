@@ -8,6 +8,6 @@ namespace SFramework.Scenes.Runtime
     public class SFSceneNode : SFConfigNode
     {
         public string Path;
-        public override ISFConfigNode[] Nodes => null;
+        public override ISFConfigNode[] Children => null;
     }
 }

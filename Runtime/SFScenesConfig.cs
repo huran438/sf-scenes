@@ -10,7 +10,7 @@ namespace SFramework.Scenes.Runtime
     {
         public SFScenesGroupContainer[] Groups;
 
-        public override ISFConfigNode[] Nodes => Groups;
+        public override ISFConfigNode[] Children => Groups;
 
         public void GetGenerationData(out SFGenerationData[] generationData)
         {
@@ -19,10 +19,10 @@ namespace SFramework.Scenes.Runtime
 
             foreach (var layer0 in Groups)
             {
-                groups.Add($"{Name}/{layer0.Name}");
+                groups.Add($"{Id}/{layer0.Id}");
                 foreach (var layer1 in layer0.Scenes)
                 {
-                    scenes.Add($"{Name}/{layer0.Name}/{layer1.Name}");
+                    scenes.Add($"{Id}/{layer0.Id}/{layer1.Id}");
                 }
             }
 

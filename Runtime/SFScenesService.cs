@@ -28,11 +28,11 @@ namespace SFramework.Scenes.Runtime
         {
             var _repository = provider.GetRepositories<SFScenesConfig>().FirstOrDefault();
 
-            foreach (var groupContainer in _repository.Nodes)
+            foreach (var groupContainer in _repository.Children)
             {
-                foreach (SFSceneNode sceneContainer in groupContainer.Nodes)
+                foreach (SFSceneNode sceneContainer in groupContainer.Children)
                 {
-                    var scene = $"{_repository.Name}/{groupContainer.Name}/{sceneContainer.Name}";
+                    var scene = $"{_repository.Id}/{groupContainer.Id}/{sceneContainer.Id}";
                     _availableScenes[scene] = sceneContainer.Path;
                 }
             }

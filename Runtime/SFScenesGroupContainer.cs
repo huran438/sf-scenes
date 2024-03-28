@@ -9,6 +9,6 @@ namespace SFramework.Scenes.Runtime
     public class SFScenesGroupContainer : SFConfigNode
     {
         public SFSceneNode[] Scenes;
-        public override ISFConfigNode[] Nodes => Scenes;
+        public override ISFConfigNode[] Children => Scenes;
     }
 }

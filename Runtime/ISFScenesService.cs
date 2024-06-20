@@ -2,6 +2,9 @@
 using SFramework.Core.Runtime;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using Cysharp.Threading.Tasks;
+using UnityEngine.Scripting;
+
+
 
 // ReSharper disable once CheckNamespace
 namespace SFramework.Scenes.Runtime

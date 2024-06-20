@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using SFramework.Configs.Runtime;
+using SFramework.Core.Runtime;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
@@ -24,18 +26,27 @@ namespace SFramework.Scenes.Runtime
         private readonly Dictionary<SceneInstance, Scene> _sceneInstanceToScene = new();
         private readonly Dictionary<SceneInstance, string> _sceneInstanceToSFScene = new();
 
-        SFScenesService(ISFConfigsService provider)
-        {
-            var _repository = provider.GetRepositories<SFScenesConfig>().FirstOrDefault();
+        private readonly ISFConfigsService _configsService;
 
-            foreach (var groupContainer in _repository.Children)
+        SFScenesService(ISFConfigsService configsService)
+        {
+            _configsService = configsService;
+        }
+        
+        public UniTask Init(CancellationToken cancellationToken)
+        {
+            var scenesConfig = _configsService.GetConfigs<SFScenesConfig>().FirstOrDefault();
+
+            foreach (var groupContainer in scenesConfig.Children)
             {
                 foreach (SFSceneNode sceneContainer in groupContainer.Children)
                 {
-                    var scene = $"{_repository.Id}/{groupContainer.Id}/{sceneContainer.Id}";
+                    var scene = $"{scenesConfig.Id}/{groupContainer.Id}/{sceneContainer.Id}";
                     _availableScenes[scene] = sceneContainer.Path;
                 }
             }
+            
+            return UniTask.CompletedTask;
         }
 
         public bool IsLoading(string sfScene)
@@ -170,5 +181,6 @@ namespace SFramework.Scenes.Runtime
         public void Dispose()
         {
         }
+
     }
 }

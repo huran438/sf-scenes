@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -64,6 +64,11 @@ namespace SFramework.Scenes.Runtime
             return _loadedScenes.ContainsKey(sfScene);
         }
 
+        public bool TryGetScenePath(string sfScene, out string path)
+        {
+            return _availableScenes.TryGetValue(sfScene, out path);
+        }
+
         public SceneInstance GetScene(string scene)
         {
             return !_loadedScenes.ContainsKey(scene) ? new SceneInstance() : _loadedScenes[scene];
@@ -100,6 +105,17 @@ namespace SFramework.Scenes.Runtime
         public async UniTask<SceneInstance> LoadScene(string sfScene, bool setActive)
         {
             if (!_availableScenes.ContainsKey(sfScene)) return new SceneInstance();
+
+            if (_loadedScenes.TryGetValue(sfScene, out var loadedSceneInstance))
+            {
+                if (setActive)
+                {
+                    SceneManager.SetActiveScene(loadedSceneInstance.Scene);
+                }
+
+                return loadedSceneInstance;
+            }
+
             _loadingScenes.Add(sfScene);
             OnSceneLoad.Invoke(sfScene);
             var assetReference = _availableScenes[sfScene];
@@ -131,6 +147,38 @@ namespace SFramework.Scenes.Runtime
             _sceneInstanceToScene.Remove(sceneInstance);
             _sceneInstanceToSFScene.Remove(sceneInstance);
             _sceneToSceneInstance.Remove(scene);
+            OnSceneUnloaded.Invoke(sfScene);
+        }
+
+        public async UniTask UnloadScene(SceneInstance sceneInstance)
+        {
+            if (!_sceneInstanceToSFScene.TryGetValue(sceneInstance, out var sfScene))
+            {
+                if (!sceneInstance.Scene.IsValid() || !sceneInstance.Scene.isLoaded) return;
+                await Addressables.UnloadSceneAsync(sceneInstance).ToUniTask();
+                return;
+            }
+
+            if (!_loadingScenes.Contains(sfScene))
+            {
+                _loadingScenes.Add(sfScene);
+            }
+
+            OnSceneUnload.Invoke(sfScene);
+
+            var scene = _sceneInstanceToScene.TryGetValue(sceneInstance, out var value) ? value : sceneInstance.Scene;
+            await Addressables.UnloadSceneAsync(sceneInstance).ToUniTask();
+
+            _loadingScenes.Remove(sfScene);
+            _loadedScenes.Remove(sfScene);
+            _sceneInstanceToScene.Remove(sceneInstance);
+            _sceneInstanceToSFScene.Remove(sceneInstance);
+
+            if (scene.IsValid())
+            {
+                _sceneToSceneInstance.Remove(scene);
+            }
+
             OnSceneUnloaded.Invoke(sfScene);
         }
 

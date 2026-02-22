@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SFramework.Configs.Runtime;
 using SFramework.Core.Runtime;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
@@ -25,6 +29,9 @@ namespace SFramework.Scenes.Runtime
         private readonly Dictionary<Scene, SceneInstance> _sceneToSceneInstance = new();
         private readonly Dictionary<SceneInstance, Scene> _sceneInstanceToScene = new();
         private readonly Dictionary<SceneInstance, string> _sceneInstanceToSFScene = new();
+
+        private readonly Dictionary<string, Scene> _externallyLoadedScenes = new();
+        private readonly Dictionary<Scene, string> _externallyLoadedSfScenes = new();
 
         private readonly ISFConfigsService _configsService;
 
@@ -61,7 +68,16 @@ namespace SFramework.Scenes.Runtime
 
         public bool IsLoaded(string sfScene)
         {
-            return _loadedScenes.ContainsKey(sfScene);
+            if (_loadedScenes.ContainsKey(sfScene)) return true;
+
+            if (_externallyLoadedScenes.TryGetValue(sfScene, out var scene))
+            {
+                if (scene.IsValid() && scene.isLoaded) return true;
+                _externallyLoadedSfScenes.Remove(scene);
+                _externallyLoadedScenes.Remove(sfScene);
+            }
+
+            return false;
         }
 
         public bool TryGetScenePath(string sfScene, out string path)
@@ -98,6 +114,11 @@ namespace SFramework.Scenes.Runtime
                 return true;
             }
 
+            if (_externallyLoadedSfScenes.TryGetValue(activeScene, out sfScene))
+            {
+                return true;
+            }
+
             sfScene = string.Empty;
             return false;
         }
@@ -116,9 +137,65 @@ namespace SFramework.Scenes.Runtime
                 return loadedSceneInstance;
             }
 
+            if (_availableScenes.TryGetValue(sfScene, out var assetReference) && !string.IsNullOrWhiteSpace(assetReference))
+            {
+                var alreadyLoadedScene = SceneManager.GetSceneByPath(assetReference);
+
+                if (!alreadyLoadedScene.IsValid() || !alreadyLoadedScene.isLoaded)
+                {
+                    var sceneName = Path.GetFileNameWithoutExtension(assetReference);
+                    if (!string.IsNullOrWhiteSpace(sceneName))
+                    {
+                        alreadyLoadedScene = SceneManager.GetSceneByName(sceneName);
+                    }
+                }
+
+                if (alreadyLoadedScene.IsValid() && alreadyLoadedScene.isLoaded)
+                {
+                    _externallyLoadedScenes[sfScene] = alreadyLoadedScene;
+                    _externallyLoadedSfScenes[alreadyLoadedScene] = sfScene;
+
+                    _loadingScenes.Add(sfScene);
+                    OnSceneLoad.Invoke(sfScene);
+                    _loadingScenes.Remove(sfScene);
+
+                    if (setActive)
+                    {
+                        SceneManager.SetActiveScene(alreadyLoadedScene);
+                    }
+
+                    OnSceneLoaded.Invoke(sfScene);
+                    return new SceneInstance();
+                }
+
+                if (Application.isEditor)
+                {
+                    alreadyLoadedScene = await TryFindLoadedSceneByAddressablesKey(assetReference);
+
+                    if (alreadyLoadedScene.IsValid() && alreadyLoadedScene.isLoaded)
+                    {
+                        _externallyLoadedScenes[sfScene] = alreadyLoadedScene;
+                        _externallyLoadedSfScenes[alreadyLoadedScene] = sfScene;
+
+                        _loadingScenes.Add(sfScene);
+                        OnSceneLoad.Invoke(sfScene);
+                        _loadingScenes.Remove(sfScene);
+
+                        if (setActive)
+                        {
+                            SceneManager.SetActiveScene(alreadyLoadedScene);
+                        }
+
+                        OnSceneLoaded.Invoke(sfScene);
+                        return new SceneInstance();
+                    }
+                }
+            }
+
             _loadingScenes.Add(sfScene);
             OnSceneLoad.Invoke(sfScene);
-            var assetReference = _availableScenes[sfScene];
+
+            assetReference = _availableScenes[sfScene];
             var sceneInstance = await Addressables.LoadSceneAsync(assetReference, LoadSceneMode.Additive);
             var scene = sceneInstance.Scene;
             _loadingScenes.Remove(sfScene);
@@ -134,9 +211,77 @@ namespace SFramework.Scenes.Runtime
             return sceneInstance;
         }
 
+        private static async UniTask<Scene> TryFindLoadedSceneByAddressablesKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return default;
+
+            var locationsHandle = Addressables.LoadResourceLocationsAsync(key);
+            try
+            {
+                await locationsHandle.Task;
+                if (locationsHandle.Status != AsyncOperationStatus.Succeeded) return default;
+
+                var locations = locationsHandle.Result;
+                if (locations == null || locations.Count == 0) return default;
+
+                for (var i = 0; i < SceneManager.sceneCount; i++)
+                {
+                    var loadedScene = SceneManager.GetSceneAt(i);
+                    if (!loadedScene.IsValid() || !loadedScene.isLoaded) continue;
+
+                    var loadedPath = loadedScene.path;
+
+                    foreach (IResourceLocation location in locations)
+                    {
+                        var internalId = location?.InternalId;
+                        if (string.IsNullOrWhiteSpace(internalId)) continue;
+
+                        if (!string.IsNullOrWhiteSpace(loadedPath) && string.Equals(loadedPath, internalId))
+                        {
+                            return loadedScene;
+                        }
+
+                        var fileName = Path.GetFileNameWithoutExtension(internalId);
+                        if (!string.IsNullOrWhiteSpace(fileName) && loadedScene.name == fileName)
+                        {
+                            return loadedScene;
+                        }
+                    }
+                }
+
+                return default;
+            }
+            finally
+            {
+                if (locationsHandle.IsValid())
+                {
+                    Addressables.Release(locationsHandle);
+                }
+            }
+        }
+
         public async UniTask UnloadScene(string sfScene)
         {
-            if (!_loadedScenes.ContainsKey(sfScene)) return;
+            if (!_loadedScenes.ContainsKey(sfScene))
+            {
+                if (_externallyLoadedScenes.TryGetValue(sfScene, out var externalScene))
+                {
+                    if (!externalScene.IsValid() || !externalScene.isLoaded) return;
+
+                    _loadingScenes.Add(sfScene);
+                    OnSceneUnload.Invoke(sfScene);
+                    await SceneManager.UnloadSceneAsync(externalScene).ToUniTask();
+                    _loadingScenes.Remove(sfScene);
+
+                    _externallyLoadedSfScenes.Remove(externalScene);
+                    _externallyLoadedScenes.Remove(sfScene);
+
+                    OnSceneUnloaded.Invoke(sfScene);
+                }
+
+                return;
+            }
+
             _loadingScenes.Add(sfScene);
             OnSceneUnload.Invoke(sfScene);
             var sceneInstance = _loadedScenes[sfScene];

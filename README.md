@@ -2,8 +2,6 @@
 
 # SF Scenes
 
-[Documentation website](https://docs.secretplace.studio/#sf-scenes)
-
 ![Package](https://img.shields.io/badge/package-sp.sframework.scenes-555555) ![Version](https://img.shields.io/badge/version-0.1.0-555555)
 
 SF Scenes maps config IDs to Addressables scene keys, loads scenes additively, and exposes load/unload events through `ISFScenesService`. It can recognize scenes that Unity already loaded and associate them with a configured ID.
